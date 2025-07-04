@@ -336,7 +336,7 @@ def show_main_dashboard(df):
             st.warning("Tidak ada data topik untuk ditampilkan.")
             
     with col2:
-        st.markdown("#### 👥 Perawi Paling Produktif")
+        st.markdown("#### 👥 Distribusi Perawi")
         top_perawi = df['Perawi'].value_counts().nlargest(10)
         if not top_perawi.empty:
             fig = px.pie(
