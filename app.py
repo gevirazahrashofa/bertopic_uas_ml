@@ -1,291 +1,535 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
+from datetime import datetime
 
-# Set page config
+# ======================================================================================
+# KONFIGURASI HALAMAN
+# ======================================================================================
 st.set_page_config(
     page_title="Dashboard Clustering Hadist",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better UI
+# ======================================================================================
+# CSS & GAYA TAMPILAN MODERN (Dengan Auto Dark/Light Mode)
+# ======================================================================================
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #2E86AB;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    :root {
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
+        --text-color-primary: #1a202c;
+        --text-color-secondary: #4a5568;
+        --bg-color-primary: #f7fafc;
+        --bg-color-secondary: #edf2f7;
+        --glass-bg: rgba(255, 255, 255, 0.6);
+        --glass-border: rgba(200, 200, 200, 0.3);
+        --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.05);
+        --shadow-medium: 0 8px 25px rgba(0, 0, 0, 0.08);
+        --gradient-main: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    }
+
+    [data-theme="dark"] {
+        --text-color-primary: #e2e8f0;
+        --text-color-secondary: #a0aec0;
+        --bg-color-primary: #1a202c;
+        --bg-color-secondary: #2d3748;
+        --glass-bg: rgba(45, 55, 72, 0.5);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.2);
+        --shadow-medium: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+        font-family: 'Inter', sans-serif;
+        color: var(--text-color-primary);
+    }
+
+    .stApp {
+        background-color: var(--bg-color-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Sembunyikan elemen bawaan Streamlit */
+    #MainMenu, footer, header { visibility: hidden; }
+    .stDeployButton { display: none; }
+    
+    /* Atur padding container utama */
+    .block-container {
+        padding: 2rem 3rem 3rem 3rem !important;
+    }
+
+    /* Kartu Kaca (Glassmorphism) */
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow-light);
+        transition: all 0.3s ease;
+    }
+
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-medium);
+        border-color: rgba(102, 126, 234, 0.5);
+    }
+
+    /* Hero Header */
+    .hero-header {
+        background: var(--gradient-main);
+        padding: 4rem 2rem;
+        border-radius: 24px;
+        margin-bottom: 3rem;
         text-align: center;
+        color: white;
+    }
+    .hero-title {
+        font-size: 3.2rem;
+        font-weight: 800;
+        color: white;
+    }
+    .hero-subtitle {
+        font-size: 1.2rem;
+        font-weight: 400;
+        opacity: 0.9;
+        color: white;
+        margin-top: -1rem;
+    }
+
+    /* Kartu Metrik */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
         margin-bottom: 2rem;
     }
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-color: var(--bg-color-secondary);
         padding: 1.5rem;
-        border-radius: 15px;
-        color: white;
+        border-radius: 16px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease-in-out;
     }
+    .metric-card:hover {
+        transform: scale(1.05);
+    }
+    .metric-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-color-secondary);
+    }
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    /* Kartu Hadist */
     .hadith-card {
-        background-color: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border-left: 4px solid #2E86AB;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .stSelectbox > div > div {
-        background-color: #f0f2f6;
+        background: var(--bg-color-secondary);
+        border-left: 5px solid var(--primary-color);
         border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .hadith-card:hover {
+        box-shadow: var(--shadow-light);
+        transform: translateX(4px);
+    }
+    .hadith-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .hadith-meta {
+        font-size: 0.85rem;
+        color: var(--text-color-secondary);
+        margin-bottom: 1rem;
+    }
+    .hadith-content {
+        color: var(--text-color-secondary);
+        line-height: 1.6;
+    }
+    .search-highlight {
+        background-color: #f093fb;
+        background-image: linear-gradient(315deg, #f093fb 0%, #f5576c 74%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 600;
+    }
+    [data-theme="dark"] .search-highlight {
+        background-color: #f093fb;
+        background-image: linear-gradient(315deg, #f093fb 0%, #f5576c 74%);
+    }
+
+    /* Sidebar */
+    .css-1d391kg {
+        background: var(--bg-color-secondary);
+        border-right: 1px solid var(--glass-border);
+    }
+    .sidebar-header {
+        font-size: 1.2rem;
+        font-weight: 600;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    /* Tombol dan Input */
+    .stButton > button {
+        background: var(--gradient-main);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-light);
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+        filter: brightness(1.1);
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        background: none;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 8px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    .stTabs [aria-selected="true"] p {
+        color: white;
     }
 </style>
 """, unsafe_allow_html=True)
 
+
+# ======================================================================================
+# JAVASCRIPT UNTUK DETEKSI TEMA OTOMATIS
+# ======================================================================================
+# Script ini akan mengubah atribut data-theme pada body berdasarkan preferensi sistem pengguna
+st.components.v1.html("""
+<script>
+const streamlitDoc = window.parent.document;
+
+function setTheme(theme) {
+    const body = streamlitDoc.querySelector('body');
+    if (theme === 'dark') {
+        body.setAttribute('data-theme', 'dark');
+    } else {
+        body.removeAttribute('data-theme');
+    }
+}
+
+const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+
+// Set tema awal berdasarkan preferensi sistem
+setTheme(darkThemeMq.matches ? 'dark' : 'light');
+
+// Tambahkan listener untuk mengubah tema jika preferensi sistem berubah
+darkThemeMq.addEventListener('change', (e) => {
+    setTheme(e.matches ? 'dark' : 'light');
+});
+</script>
+""", height=0)
+
+
+# ======================================================================================
+# FUNGSI-FUNGSI UTAMA
+# ======================================================================================
+
 @st.cache_data
 def load_data():
-    """Load preprocessed data"""
+    """Memuat data dari file CSV dengan penanganan error."""
     try:
         df = pd.read_csv('hadits_with_topics.csv')
+        # Pastikan kolom yang dibutuhkan ada
+        required_cols = ['Perawi', 'Terjemahan', 'topic']
+        if not all(col in df.columns for col in required_cols):
+            st.error(f"❌ File CSV harus memiliki kolom: {', '.join(required_cols)}")
+            return None
         return df
     except FileNotFoundError:
-        st.error("❌ File 'hadits_with_topics.csv' tidak ditemukan!")
+        st.error("❌ File 'hadits_with_topics.csv' tidak ditemukan! Pastikan file berada di direktori yang sama.")
+        return None
+    except Exception as e:
+        st.error(f"❌ Terjadi kesalahan saat memuat data: {e}")
         return None
 
-def main():
-    st.markdown('<h1 class="main-header">📚 Dashboard Clustering Hadist</h1>', unsafe_allow_html=True)
+def create_hero_section(df):
+    """Membuat bagian hero header dengan statistik utama."""
+    total_hadits = len(df)
+    # Asumsi topik -1 adalah outlier/tidak terkluster
+    total_topics = df[df['topic'] != -1]['topic'].nunique()
+    clustered = len(df[df['topic'] != -1])
     
-    # Load data
-    df = load_data()
-    if df is None:
-        st.stop()
+    st.markdown(f"""
+    <div class="hero-header">
+        <h1 class="hero-title">Dashboard Analisis Hadist</h1>
+        <p class="hero-subtitle">Mengelompokkan dan Menganalisis Ribuan Hadist Menggunakan Machine Learning</p>
+    </div>
     
-    # Sidebar navigation
-    st.sidebar.title("🧭 Navigasi")
-    page = st.sidebar.radio(
-        "Pilih Halaman:",
-        ["📊 Dashboard Utama", "🔍 Pencarian Hadist", "📈 Visualisasi Data"]
-    )
-    
-    if page == "📊 Dashboard Utama":
-        show_main_dashboard(df)
-    elif page == "🔍 Pencarian Hadist":
-        show_search_page(df)
-    elif page == "📈 Visualisasi Data":
-        show_visualization_page(df)
+    <div class="metric-grid">
+        <div class="metric-card">
+            <p class="metric-label">Total Hadist</p>
+            <p class="metric-value">{total_hadits:,}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Topik Teridentifikasi</p>
+            <p class="metric-value">{total_topics}</p>
+        </div>
+        <div class="metric-card">
+            <p class="metric-label">Hadist Terkluster</p>
+            <p class="metric-value">{clustered:,}</p>
+        </div>
+         <div class="metric-card">
+            <p class="metric-label">Perawi Unik</p>
+            <p class="metric-value">{df['Perawi'].nunique():,}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def show_main_dashboard(df):
-    """Main dashboard with key metrics and overview"""
-    st.header("📊 Ringkasan Data")
+    """Menampilkan halaman dasbor utama."""
+    st.markdown("## 📖 Tinjauan Umum")
     
-    # Key metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    total_hadits = len(df)
-    total_topics = len(df['topic'].unique()) - (1 if -1 in df['topic'].unique() else 0)
-    clustered = len(df[df['topic'] != -1])
-    success_rate = (clustered / total_hadits) * 100
-    
+    col1, col2 = st.columns([1, 1], gap="large")
+
     with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>📚 Total Hadist</h3>
-            <h2>{total_hadits:,}</h2>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.markdown("#### 📊 Distribusi Hadist per Topik")
+        topic_counts = df[df['topic'] != -1]['topic'].value_counts().nlargest(10)
+        if not topic_counts.empty:
+            fig = px.bar(
+                topic_counts,
+                x=topic_counts.index,
+                y=topic_counts.values,
+                labels={'x': 'Nomor Topik', 'y': 'Jumlah Hadist'},
+                color_discrete_sequence=[st.get_option("theme.primaryColor")]
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(type='category')
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Tidak ada data topik untuk ditampilkan.")
+            
     with col2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>🏷️ Jumlah Topik</h3>
-            <h2>{total_topics}</h2>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>✅ Terkluster</h3>
-            <h2>{clustered:,}</h2>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <h3>📈 Tingkat Sukses</h3>
-            <h2>{success_rate:.1f}%</h2>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Sample hadits from top topics
-    st.subheader("📖 Contoh Hadist dari Topik Teratas")
-    top_topic = df['topic'].value_counts().index[0]
-    sample_hadits = df[df['topic'] == top_topic].head(3)
-    
-    for idx, row in sample_hadits.iterrows():
-        st.markdown(f"""
-        <div class="hadith-card">
-            <h4>📝 Hadist dari Topik {row['topic']}</h4>
-            <p><strong>Perawi:</strong> {row['Perawi']}</p>
-            <p><strong>Terjemahan:</strong> {row['Terjemahan'][:200]}...</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("#### 👥 Perawi Paling Produktif")
+        top_perawi = df['Perawi'].value_counts().nlargest(10)
+        if not top_perawi.empty:
+            fig = px.pie(
+                top_perawi,
+                values=top_perawi.values,
+                names=top_perawi.index,
+                hole=0.4,
+                color_discrete_sequence=px.colors.sequential.Plasma_r
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                showlegend=False
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Tidak ada data perawi untuk ditampilkan.")
+
+    st.markdown("---")
+    st.markdown("### 📜 Contoh Hadist dari Topik Populer")
+    top_topics = df[df['topic'] != -1]['topic'].value_counts().nlargest(3).index
+    for topic_id in top_topics:
+        sample_hadith = df[df['topic'] == topic_id].iloc[0]
+        with st.container():
+            st.markdown(f"""
+            <div class="hadith-card">
+                <p class="hadith-title">Topik {int(topic_id)}</p>
+                <p class="hadith-meta">Diriwayatkan oleh: <strong>{sample_hadith['Perawi']}</strong></p>
+                <p class="hadith-content">"{sample_hadith['Terjemahan'][:300]}..."</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 def show_search_page(df):
-    """Search functionality"""
-    st.header("🔍 Pencarian Hadist")
-    
-    # Search options
-    search_type = st.selectbox(
-        "Pilih jenis pencarian:",
-        ["🔤 Kata Kunci", "🏷️ Topik", "👤 Perawi"]
+    """Menampilkan halaman pencarian hadist."""
+    st.markdown("## 🔍 Pencarian & Eksplorasi Hadist")
+
+    search_type = st.radio(
+        "Cari Berdasarkan:",
+        ["Kata Kunci", "Topik", "Perawi"],
+        horizontal=True,
+        label_visibility="collapsed"
     )
     
-    if search_type == "🔤 Kata Kunci":
-        search_query = st.text_input("🔍 Masukkan kata kunci:", placeholder="Contoh: shalat, puasa, zakat")
-        
+    st.markdown('<hr style="margin-top: -0.5rem; margin-bottom: 1rem;">', unsafe_allow_html=True)
+    
+    if search_type == "Kata Kunci":
+        search_query = st.text_input("Masukkan kata kunci pencarian:", placeholder="Contoh: shalat, puasa, zakat...")
         if search_query:
-            # Search in text
             mask = df['Terjemahan'].str.contains(search_query, case=False, na=False)
             results = df[mask]
+            st.info(f"Ditemukan {len(results)} hadist yang cocok.")
             
-            st.success(f"✅ Ditemukan {len(results)} hadist yang mengandung '{search_query}'")
-            
-            if len(results) > 0:
-                # Show results with pagination
-                results_per_page = 5
-                total_pages = (len(results) - 1) // results_per_page + 1
-                
-                if total_pages > 1:
-                    page_num = st.selectbox("Pilih halaman:", range(1, total_pages + 1))
-                    start_idx = (page_num - 1) * results_per_page
-                    end_idx = start_idx + results_per_page
-                    page_results = results.iloc[start_idx:end_idx]
-                else:
-                    page_results = results.head(results_per_page)
-                
-                for idx, row in page_results.iterrows():
-                    st.markdown(f"""
-                    <div class="hadith-card">
-                        <h4>📝 Hadist #{idx + 1} - Topik {row['topic']}</h4>
-                        <p><strong>Perawi:</strong> {row['Perawi']}</p>
-                        <p><strong>Terjemahan:</strong> {row['Terjemahan']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-    elif search_type == "🏷️ Topik":
-        available_topics = sorted([t for t in df['topic'].unique() if t != -1])
-        selected_topic = st.selectbox("Pilih topik:", available_topics)
-        
-        if selected_topic is not None:
-            results = df[df['topic'] == selected_topic]
-            st.success(f"✅ Ditemukan {len(results)} hadist dalam topik {selected_topic}")
-            
-            # Show sample results
-            for idx, row in results.head(5).iterrows():
+            for _, row in results.head(20).iterrows():
+                highlighted_text = row['Terjemahan'].replace(
+                    search_query, f'<span class="search-highlight">{search_query}</span>'
+                )
                 st.markdown(f"""
                 <div class="hadith-card">
-                    <h4>📝 Hadist #{idx + 1}</h4>
-                    <p><strong>Perawi:</strong> {row['Perawi']}</p>
-                    <p><strong>Terjemahan:</strong> {row['Terjemahan']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-    
-    elif search_type == "👤 Perawi":
-        available_perawi = sorted(df['Perawi'].unique())
-        selected_perawi = st.selectbox("Pilih perawi:", available_perawi)
-        
-        if selected_perawi:
-            results = df[df['Perawi'] == selected_perawi]
-            st.success(f"✅ Ditemukan {len(results)} hadist dari {selected_perawi}")
-            
-            # Show sample results
-            for idx, row in results.head(5).iterrows():
-                st.markdown(f"""
-                <div class="hadith-card">
-                    <h4>📝 Hadist #{idx + 1} - Topik {row['topic']}</h4>
-                    <p><strong>Terjemahan:</strong> {row['Terjemahan']}</p>
+                    <p class="hadith-meta"><strong>Perawi:</strong> {row['Perawi']} | <strong>Topik:</strong> {int(row['topic'])}</p>
+                    <p class="hadith-content">{highlighted_text}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-def show_visualization_page(df):
-    """Data visualization page"""
-    st.header("📈 Visualisasi Data")
+    elif search_type == "Topik":
+        available_topics = sorted([t for t in df['topic'].unique() if t != -1])
+        selected_topic = st.selectbox("Pilih Topik:", available_topics)
+        if selected_topic is not None:
+            results = df[df['topic'] == selected_topic]
+            st.info(f"Menampilkan {len(results)} hadist dari Topik {selected_topic}.")
+            for _, row in results.head(20).iterrows():
+                st.markdown(f"""
+                <div class="hadith-card">
+                    <p class="hadith-meta"><strong>Perawi:</strong> {row['Perawi']}</p>
+                    <p class="hadith-content">{row['Terjemahan']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    elif search_type == "Perawi":
+        available_perawi = sorted(df['Perawi'].unique())
+        selected_perawi = st.selectbox("Pilih Perawi:", available_perawi)
+        if selected_perawi:
+            results = df[df['Perawi'] == selected_perawi]
+            st.info(f"Menampilkan {len(results)} hadist dari {selected_perawi}.")
+            for _, row in results.head(20).iterrows():
+                st.markdown(f"""
+                <div class="hadith-card">
+                    <p class="hadith-meta"><strong>Topik:</strong> {int(row['topic'])}</p>
+                    <p class="hadith-content">{row['Terjemahan']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+def show_analysis_page(df):
+    """Menampilkan halaman analisis data mendalam."""
+    st.markdown("## 📈 Analisis Mendalam")
     
-    # Topic distribution
-    st.subheader("📊 Analisis Distribusi Topik")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Topic size histogram
-        topic_counts = df['topic'].value_counts()
-        topic_sizes = [count for topic, count in topic_counts.items() if topic != -1]
-        
+    tab1, tab2, tab3 = st.tabs(["Distribusi Topik", "Analisis Perawi", "Statistik Kluster"])
+
+    with tab1:
+        st.markdown("### Sebaran Hadist di Seluruh Topik")
+        topic_counts = df[df['topic'] != -1]['topic'].value_counts()
         fig = px.histogram(
-            x=topic_sizes,
-            nbins=15,
-            title="Distribusi Ukuran Topik",
-            labels={'x': 'Ukuran Topik (Jumlah Hadist)', 'y': 'Frekuensi'},
-            color_discrete_sequence=['#2E86AB']
+            x=topic_counts.values,
+            nbins=20,
+            title="Distribusi Ukuran Topik (Jumlah Hadist per Topik)",
+            labels={'x': 'Jumlah Hadist dalam Topik', 'y': 'Frekuensi (Jumlah Topik)'},
+            color_discrete_sequence=[st.get_option("theme.primaryColor")]
         )
-        fig.update_layout(height=400)
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        # Top perawi
-        top_perawi = df['Perawi'].value_counts().head(10)
+        st.info(f"Rata-rata terdapat **{topic_counts.mean():.1f}** hadist per topik, dengan topik terbesar berisi **{topic_counts.max()}** hadist dan yang terkecil **{topic_counts.min()}** hadist.")
+
+
+    with tab2:
+        st.markdown("### Keragaman Perawi Antar Topik")
+        perawi_per_topic = df[df['topic'] != -1].groupby('topic')['Perawi'].nunique()
+        fig = px.scatter(
+            x=perawi_per_topic.index,
+            y=perawi_per_topic.values,
+            size=perawi_per_topic.values,
+            color=perawi_per_topic.values,
+            color_continuous_scale='Plasma',
+            title="Keragaman Perawi per Topik",
+            labels={'x': 'Nomor Topik', 'y': 'Jumlah Perawi Unik', 'color': 'Jumlah Perawi Unik'}
+        )
+        fig.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(type='category')
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.info("Setiap titik merepresentasikan sebuah topik. Ukuran dan warna titik menunjukkan jumlah perawi unik yang hadistnya ada di dalam topik tersebut.")
+
+    with tab3:
+        st.markdown("### Statistik Detail Kluster")
+        topic_stats = df[df['topic'] != -1].groupby('topic').agg(
+            jumlah_hadist=('Terjemahan', 'count'),
+            jumlah_perawi=('Perawi', 'nunique')
+        ).reset_index()
         
-        fig = px.bar(
-            x=top_perawi.values,
-            y=top_perawi.index,
-            orientation='h',
-            title="Top 10 Perawi dengan Hadist Terbanyak",
-            color=top_perawi.values,
-            color_continuous_scale='Viridis'
+        # Kode yang Direkomendasikan
+        try:
+            # Coba tampilkan dengan gradasi warna
+            st.dataframe(
+                topic_stats.style.background_gradient(cmap='viridis'),
+                use_container_width=True
+            )
+        except ImportError:
+            # Jika matplotlib tidak ada, tampilkan tabel biasa
+            st.warning("Matplotlib tidak terinstal. Menampilkan tabel tanpa pewarnaan gradien.")
+            st.dataframe(topic_stats, use_container_width=True)
+        st.info("Tabel di atas menunjukkan jumlah hadist dan jumlah perawi unik untuk setiap topik yang berhasil diidentifikasi.")
+
+
+# ======================================================================================
+# FUNGSI MAIN()
+# ======================================================================================
+
+def main():
+    """Fungsi utama untuk menjalankan aplikasi Streamlit."""
+    df = load_data()
+    if df is None:
+        st.warning("Silakan unggah atau perbaiki file data untuk melanjutkan.")
+        st.stop()
+    
+    # Sidebar Navigation
+    with st.sidebar:
+        st.markdown('<p class="sidebar-header">🧭 Navigasi</p>', unsafe_allow_html=True)
+        page = st.radio(
+            "Pilih Halaman:",
+            ["🏠 Dasbor Utama", "🔍 Pencarian", "📈 Analisis"],
+            label_visibility="collapsed"
         )
-        fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Interactive scatter plot
-    st.subheader("🎯 Analisis Clustering")
-    
-    # Create scatter plot of topics vs hadith count
-    topic_stats = df.groupby('topic').agg({
-        'Terjemahan': 'count',
-        'Perawi': 'nunique'
-    }).rename(columns={'Terjemahan': 'jumlah_hadist', 'Perawi': 'jumlah_perawi'})
-    
-    fig = px.scatter(
-        topic_stats,
-        x='jumlah_hadist',
-        y='jumlah_perawi',
-        title="Hubungan Jumlah Hadist dan Jumlah Perawi per Topik",
-        labels={'jumlah_hadist': 'Jumlah Hadist', 'jumlah_perawi': 'Jumlah Perawi'},
-        color='jumlah_hadist',
-        size='jumlah_hadist',
-        hover_data=['jumlah_hadist', 'jumlah_perawi']
-    )
-    fig.update_layout(height=500)
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Summary statistics
-    st.subheader("📊 Statistik Ringkasan")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Rata-rata Hadist per Topik", f"{topic_stats['jumlah_hadist'].mean():.1f}")
-    
-    with col2:
-        st.metric("Topik Terbesar", f"{topic_stats['jumlah_hadist'].max()} hadist")
-    
-    with col3:
-        st.metric("Topik Terkecil", f"{topic_stats['jumlah_hadist'].min()} hadist")
+        st.markdown("---")
+        st.markdown("#### ℹ️ Tentang Aplikasi")
+        st.info(
+            "Aplikasi ini menggunakan model clustering untuk mengelompokkan hadist berdasarkan "
+            "kemiripan teks terjemahannya. Tujuannya adalah untuk membantu analisis dan "
+            "eksplorasi koleksi hadist dalam jumlah besar."
+        )
+
+    # Hero Section - Tampil di semua halaman
+    create_hero_section(df)
+
+    # Page Routing
+    if page == "🏠 Dasbor Utama":
+        show_main_dashboard(df)
+    elif page == "🔍 Pencarian":
+        show_search_page(df)
+    elif page == "📈 Analisis":
+        show_analysis_page(df)
 
 if __name__ == "__main__":
     main()
